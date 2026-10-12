@@ -32,7 +32,6 @@ public class SecurityConfig {
 
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
             .csrf(csrf -> csrf.disable())
 
             .authorizeHttpRequests(auth -> auth
@@ -40,62 +39,51 @@ public class SecurityConfig {
                 // Allow CORS preflight requests
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // Public authentication endpoints
+                // Signup and signin do not require authentication
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // Public Swagger documentation
+                // Payment webhook is called by the payment provider
                 .requestMatchers(
-                    "/",
-                    "/error",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**"
+                    HttpMethod.POST,
+                    "/api/payment/webhook"
                 ).permitAll()
 
-                // Public product viewing
+                // Product listing and viewing require login
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/products",
                     "/api/products/**"
-                ).permitAll()
+                ).authenticated()
 
-                // Admin-only product management
+                // Only ADMIN can create products
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/products",
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
+                // Only ADMIN can update products
                 .requestMatchers(
                     HttpMethod.PUT,
+                    "/api/products",
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
-                .requestMatchers(
-                    HttpMethod.PATCH,
-                    "/api/products/**"
-                ).hasRole("ADMIN")
-
+                // Only ADMIN can delete products
                 .requestMatchers(
                     HttpMethod.DELETE,
+                    "/api/products",
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
-                // Public payment webhook
-                .requestMatchers(
-                    "/api/payment/webhook"
-                ).permitAll()
+                // Only ADMIN can access background jobs
+                .requestMatchers("/api/jobs/**").hasRole("ADMIN")
 
-                // Admin-only background jobs
-                .requestMatchers(
-                    "/api/jobs/**"
-                ).hasRole("ADMIN")
-
-                // All remaining endpoints require authentication
+                // All remaining endpoints require login
                 .anyRequest().authenticated()
             )
 
-            // JWT-based authentication is normally stateless
+            // JWT authentication is stateless
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
                     SessionCreationPolicy.STATELESS
@@ -116,12 +104,11 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // Local frontend and deployed frontend
-        configuration.setAllowedOrigins(
+        configuration.setAllowedOriginPatterns(
             List.of(
+                "http://localhost:5173",
                 "http://localhost:5177",
-                "http://localhost:5173"
-                // Add your actual deployed frontend URL here:
-                // "https://your-frontend-domain.onrender.com"
+                "https://*.onrender.com"
             )
         );
 
@@ -137,7 +124,12 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedHeaders(
-            List.of("*")
+            List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin"
+            )
         );
 
         configuration.setAllowCredentials(true);
