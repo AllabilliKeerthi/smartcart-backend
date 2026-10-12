@@ -3,30 +3,36 @@ package com.klu.ecommerce_backend.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
 
+    private static final String SECURITY_SCHEME_NAME = "Bearer Authentication";
+
     @Bean
     public OpenAPI customOpenAPI() {
-        String schemeName = "Bearer Authentication";
 
         return new OpenAPI()
+                .info(new Info()
+                        .title("SmartCart API")
+                        .version("1.0")
+                        .description("SmartCart E-commerce Backend API"))
                 .components(new Components()
                         .addSecuritySchemes(
-                                schemeName,
+                                SECURITY_SCHEME_NAME,
                                 new SecurityScheme()
+                                        .name(SECURITY_SCHEME_NAME)
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
-                                        .bearerFormat("JWT")
-                        ))
+                                        .bearerFormat("JWT")))
                 .addSecurityItem(
                         new SecurityRequirement()
-                                .addList(schemeName)
-                );
+                                .addList(SECURITY_SCHEME_NAME));
     }
 }
