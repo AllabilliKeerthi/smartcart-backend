@@ -1,3 +1,4 @@
+
 package com.klu.ecommerce_backend.security;
 
 import java.util.List;
@@ -22,7 +23,6 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter) {
-
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
@@ -31,70 +31,74 @@ public class SecurityConfig {
             HttpSecurity http) throws Exception {
 
         http
-            .cors(cors ->
-                cors.configurationSource(
-                    corsConfigurationSource()
-                )
-            )
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            .csrf(csrf ->
-                csrf.disable()
-            )
+            .csrf(csrf -> csrf.disable())
 
             .authorizeHttpRequests(auth -> auth
 
-                // CORS Preflight
+                // Allow CORS preflight requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // Public authentication endpoints
+                .requestMatchers("/api/auth/**").permitAll()
+
+                // Public Swagger documentation
                 .requestMatchers(
-                    HttpMethod.OPTIONS,
-                    "/**"
+                    "/",
+                    "/error",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
                 ).permitAll()
 
-                // Signup and Signin
-                .requestMatchers(
-                    "/api/auth/**"
-                ).permitAll()
-
-                // Product View
+                // Public product viewing
                 .requestMatchers(
                     HttpMethod.GET,
+                    "/api/products",
                     "/api/products/**"
                 ).permitAll()
 
-                // Product Insert
+                // Admin-only product management
                 .requestMatchers(
                     HttpMethod.POST,
+                    "/api/products",
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
-                // Product Update
                 .requestMatchers(
                     HttpMethod.PUT,
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
-                // Product Delete
+                .requestMatchers(
+                    HttpMethod.PATCH,
+                    "/api/products/**"
+                ).hasRole("ADMIN")
+
                 .requestMatchers(
                     HttpMethod.DELETE,
                     "/api/products/**"
                 ).hasRole("ADMIN")
 
-                // Razorpay Webhook
+                // Public payment webhook
                 .requestMatchers(
                     "/api/payment/webhook"
                 ).permitAll()
 
-                // Background Jobs - ADMIN ONLY
+                // Admin-only background jobs
                 .requestMatchers(
                     "/api/jobs/**"
                 ).hasRole("ADMIN")
 
-                // All other requests
+                // All remaining endpoints require authentication
                 .anyRequest().authenticated()
             )
 
+            // JWT-based authentication is normally stateless
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
-                    SessionCreationPolicy.IF_REQUIRED
+                    SessionCreationPolicy.STATELESS
                 )
             )
 
@@ -109,36 +113,39 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
-        CorsConfiguration configuration =
-                new CorsConfiguration();
+        CorsConfiguration configuration = new CorsConfiguration();
 
+        // Local frontend and deployed frontend
         configuration.setAllowedOrigins(
-                List.of("http://localhost:5177")
+            List.of(
+                "http://localhost:5177",
+                "http://localhost:5173"
+                // Add your actual deployed frontend URL here:
+                // "https://your-frontend-domain.onrender.com"
+            )
         );
 
         configuration.setAllowedMethods(
-                List.of(
-                    "GET",
-                    "POST",
-                    "PUT",
-                    "DELETE",
-                    "OPTIONS"
-                )
+            List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            )
         );
 
         configuration.setAllowedHeaders(
-                List.of("*")
+            List.of("*")
         );
 
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+            new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
