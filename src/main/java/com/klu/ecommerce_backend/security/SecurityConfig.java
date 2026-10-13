@@ -72,9 +72,9 @@ public class SecurityConfig {
                     HttpMethod.GET, PRODUCTS, PRODUCTS_PATH
                 ).authenticated()
 
-                // Only admins can create products.
+               // Only admins can create products.
                 .requestMatchers(
-                    HttpMethod.POST, PRODUCTS, PRODUCTS_PATH
+                     HttpMethod.POST, PRODUCTS, PRODUCTS_PATH
                 ).hasRole(ADMIN)
 
                 // Only admins can update products.
