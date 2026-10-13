@@ -3,6 +3,8 @@ package com.klu.ecommerce_backend.security;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.klu.ecommerce_backend.service.JwtService;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,6 +23,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
@@ -38,11 +44,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authorizationHeader = request.getHeader("Authorization");
+        String authorizationHeader =
+                request.getHeader("Authorization");
 
-        // Continue normally when no Bearer token is supplied.
         if (authorizationHeader == null
                 || !authorizationHeader.startsWith("Bearer ")) {
+            log.debug("No Bearer token for {}", request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
@@ -73,17 +80,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext()
                             .setAuthentication(authentication);
+
+                    log.info(
+                            "JWT authenticated for endpoint {}; authorities={}",
+                            request.getRequestURI(),
+                            userDetails.getAuthorities());
+                } else {
+                    log.warn(
+                            "JWT validation failed for endpoint {}",
+                            request.getRequestURI());
                 }
             }
-
         } catch (UsernameNotFoundException exception) {
-            // The token refers to a user who no longer exists.
             SecurityContextHolder.clearContext();
+            log.warn("JWT user was not found in the database");
 
-        } catch (io.jsonwebtoken.JwtException
-                | IllegalArgumentException exception) {
-            // Invalid or malformed JWT: do not authenticate the request.
+        } catch (JwtException | IllegalArgumentException exception) {
             SecurityContextHolder.clearContext();
+            log.warn(
+                    "JWT validation error: {}",
+                    exception.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);
