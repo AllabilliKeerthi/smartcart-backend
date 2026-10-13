@@ -1,4 +1,3 @@
-
 package com.klu.ecommerce_backend.security;
 
 import java.util.List;
@@ -19,6 +18,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final String PRODUCTS = "/api/products";
+    private static final String PRODUCTS_PATH = "/api/products/**";
+    private static final String ADMIN = "ADMIN";
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(
@@ -31,65 +34,71 @@ public class SecurityConfig {
             HttpSecurity http) throws Exception {
 
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-
-            .authorizeHttpRequests(auth -> auth
-
-                // Allow CORS preflight requests
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // Signup and signin do not require authentication
-                .requestMatchers("/api/auth/**").permitAll()
-
-                // Payment webhook is called by the payment provider
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/api/payment/webhook"
-                ).permitAll()
-
-                // Product listing and viewing require login
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/products",
-                    "/api/products/**"
-                ).authenticated()
-
-                // Only ADMIN can create products
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/api/products",
-                    "/api/products/**"
-                ).hasRole("ADMIN")
-
-                // Only ADMIN can update products
-                .requestMatchers(
-                    HttpMethod.PUT,
-                    "/api/products",
-                    "/api/products/**"
-                ).hasRole("ADMIN")
-
-                // Only ADMIN can delete products
-                .requestMatchers(
-                    HttpMethod.DELETE,
-                    "/api/products",
-                    "/api/products/**"
-                ).hasRole("ADMIN")
-
-                // Only ADMIN can access background jobs
-                .requestMatchers("/api/jobs/**").hasRole("ADMIN")
-
-                // All remaining endpoints require login
-                .anyRequest().authenticated()
+            .cors(cors ->
+                cors.configurationSource(corsConfigurationSource())
             )
-
-            // JWT authentication is stateless
+            .csrf(csrf -> csrf.disable())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
                     SessionCreationPolicy.STATELESS
                 )
             )
+            .authorizeHttpRequests(auth -> auth
 
+                // Allow browser preflight requests.
+                .requestMatchers(
+                    HttpMethod.OPTIONS, "/**"
+                ).permitAll()
+
+                // Signup and signin.
+                .requestMatchers(
+                    "/api/auth/**"
+                ).permitAll()
+
+                // Payment provider webhook.
+                .requestMatchers(
+                    HttpMethod.POST, "/api/payment/webhook"
+                ).permitAll()
+
+                // Swagger UI and OpenAPI documentation.
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
+                ).permitAll()
+
+                // Authenticated users can view products.
+                .requestMatchers(
+                    HttpMethod.GET, PRODUCTS, PRODUCTS_PATH
+                ).authenticated()
+
+                // Only admins can create products.
+                .requestMatchers(
+                    HttpMethod.POST, PRODUCTS, PRODUCTS_PATH
+                ).hasRole(ADMIN)
+
+                // Only admins can update products.
+                .requestMatchers(
+                    HttpMethod.PUT, PRODUCTS, PRODUCTS_PATH
+                ).hasRole(ADMIN)
+
+                .requestMatchers(
+                    HttpMethod.PATCH, PRODUCTS, PRODUCTS_PATH
+                ).hasRole(ADMIN)
+
+                // Only admins can delete products.
+                .requestMatchers(
+                    HttpMethod.DELETE, PRODUCTS, PRODUCTS_PATH
+                ).hasRole(ADMIN)
+
+                // Only admins can access background job endpoints.
+                .requestMatchers(
+                    "/api/jobs/**"
+                ).hasRole(ADMIN)
+
+                // Other endpoints require authentication.
+                .anyRequest().authenticated()
+            )
             .addFilterBefore(
                 jwtAuthenticationFilter,
                 UsernamePasswordAuthenticationFilter.class
@@ -103,34 +112,27 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Local frontend and deployed frontend
-        configuration.setAllowedOriginPatterns(
-            List.of(
-                "http://localhost:5173",
-                "http://localhost:5177",
-                "https://*.onrender.com"
-            )
-        );
+        configuration.setAllowedOriginPatterns(List.of(
+            "http://localhost:5173",
+            "http://localhost:5177",
+            "https://*.onrender.com"
+        ));
 
-        configuration.setAllowedMethods(
-            List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-            )
-        );
+        configuration.setAllowedMethods(List.of(
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "OPTIONS"
+        ));
 
-        configuration.setAllowedHeaders(
-            List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "Origin"
-            )
-        );
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin"
+        ));
 
         configuration.setAllowCredentials(true);
 
